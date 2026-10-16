@@ -41,6 +41,7 @@ vulkan_initializers = dependency('vulkan_initializers',
 pkg-config: `vulkan_initializers`.
 
 ## Regenerating
+CI does this daily and publishes a release for every new Vulkan-Headers version.
 ```
 git -C external/Vulkan-Headers fetch --depth 1 origin tag v1.4.366
 git -C external/Vulkan-Headers checkout v1.4.366

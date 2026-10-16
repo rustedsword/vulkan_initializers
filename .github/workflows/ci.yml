@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container: gcc:16
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends cmake meson ninja-build python3 libvulkan-dev libx11-dev libxcb1-dev libxrandr-dev
+      - name: Install the Vulkan-Headers release the header was generated from
+        run: |
+          version=$(sed -n 's/^ \* Vulkan registry: .*, header version \([0-9.]*\)\.$/\1/p' include/vk_init.h)
+          git clone --depth 1 --branch "v$version" https://github.com/KhronosGroup/Vulkan-Headers.git /tmp/Vulkan-Headers
+          cp -r /tmp/Vulkan-Headers/include/. /usr/local/include/
+      - name: Check generated files
+        run: python3 scripts/gen_vk_init.py --registry /tmp/Vulkan-Headers/registry/vk.xml --check
+      - name: CMake
+        if: ${{ !cancelled() }}
+        run: |
+          cmake -S . -B build-cmake -DVULKAN_INITIALIZERS_TEST=ON
+          cmake --build build-cmake --parallel $(nproc)
+          ctest --test-dir build-cmake --output-on-failure
+      - name: Meson
+        if: ${{ !cancelled() }}
+        run: |
+          meson setup build-meson -Dtests=true
+          meson test -C build-meson --print-errorlogs

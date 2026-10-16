@@ -5,8 +5,9 @@ if(TARGET vulkan_initializers)
     return()
 endif()
 
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/VERSION" version LIMIT_COUNT 1)
 project(vulkan_initializers
-    VERSION 0.1.0
+    VERSION ${version}
     DESCRIPTION "C23 macros that initialize Vulkan structs with their sType"
     LANGUAGES C)
 include(GNUInstallDirs)
@@ -37,7 +38,7 @@ install(EXPORT vulkan_initializers-config
     )
 
 write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/vulkan_initializers-config-version.cmake"
-    COMPATIBILITY SameMinorVersion
+    COMPATIBILITY AnyNewerVersion
     ARCH_INDEPENDENT
     )
 

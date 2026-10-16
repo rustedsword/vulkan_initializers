@@ -1,8 +1,8 @@
 project(
   'vulkan_initializers',
-  version: '0.1.0',
+  version: files('VERSION'),
   license: 'MIT',
-  meson_version: '>= 0.54.0',
+  meson_version: '>= 0.57.0',
 )
 
 install_headers('include/vk_init.h')

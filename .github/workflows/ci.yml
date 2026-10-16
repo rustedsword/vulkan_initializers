@@ -12,17 +12,14 @@ jobs:
     container: gcc:16
     steps:
       - uses: actions/checkout@v5
+        with:
+          submodules: true
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends cmake meson ninja-build python3 libvulkan-dev libx11-dev libxcb1-dev libxrandr-dev
-      - name: Install the Vulkan-Headers release the header was generated from
-        run: |
-          version=$(sed -n 's/^ \* Vulkan registry: .*, header version \([0-9.]*\)\.$/\1/p' include/vk_init.h)
-          git clone --depth 1 --branch "v$version" https://github.com/KhronosGroup/Vulkan-Headers.git /tmp/Vulkan-Headers
-          cp -r /tmp/Vulkan-Headers/include/. /usr/local/include/
+          apt-get install -y --no-install-recommends cmake meson ninja-build python3 libx11-dev libxcb1-dev libxrandr-dev
       - name: Check generated files
-        run: python3 scripts/gen_vk_init.py --registry /tmp/Vulkan-Headers/registry/vk.xml --check
+        run: python3 scripts/gen_vk_init.py --check
       - name: CMake
         if: ${{ !cancelled() }}
         run: |

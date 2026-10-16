@@ -39,15 +39,18 @@ vulkan_initializers = dependency('vulkan_initializers',
 pkg-config: `vulkan_initializers`.
 
 ## Regenerating
-`include/vk_init.h` and `tests/vk_init_test.c` are generated from the Vulkan registry:
+`include/vk_init.h`, `tests/vk_init_test.c` and `VERSION` are generated from the registry of the `external/Vulkan-Headers` submodule, and the package version is that Vulkan-Headers version. To update:
 ```
-scripts/gen_vk_init.py --registry Vulkan-Headers/registry/vk.xml
+git -C external/Vulkan-Headers fetch --depth 1 origin tag v1.4.366
+git -C external/Vulkan-Headers checkout v1.4.366
+scripts/gen_vk_init.py
 ```
-The default registry is `/usr/share/vulkan/registry/vk.xml`. The generated test is compiled with `$CC` before anything is written; pass `CPPFLAGS=-I...` to choose the Vulkan headers. `--check` fails if the files are out of date. CI checks them against the Vulkan-Headers release named in the header.
+The generated test is compiled with `$CC` against the submodule headers before anything is written. `--check` fails if the files are out of date, and `--registry` selects another `vk.xml`.
 
 ## Tests
+The tests are built against the submodule headers, so run `git submodule update --init` first.
 ```
 cmake -B build -DVULKAN_INITIALIZERS_TEST=ON && cmake --build build && ctest --test-dir build
 meson setup build -Dtests=true && meson test -C build
 ```
-`vk_init_test` instantiates every macro that the Vulkan headers allow, `vk_init_platform_test` also enables beta extensions and every platform whose headers are installed. The tests need Vulkan headers at least as new as the registry the header was generated from.
+`vk_init_test` instantiates every macro that the Vulkan headers allow, `vk_init_platform_test` also enables beta extensions and every platform whose headers are installed.

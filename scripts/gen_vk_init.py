@@ -19,9 +19,10 @@ from pathlib import Path
 
 API = "vulkan"
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REGISTRY = Path("/usr/share/vulkan/registry/vk.xml")
+DEFAULT_REGISTRY = REPO_ROOT / "external/Vulkan-Headers/registry/vk.xml"
 DEFAULT_HEADER = REPO_ROOT / "include/vk_init.h"
 DEFAULT_TEST = REPO_ROOT / "tests/vk_init_test.c"
+DEFAULT_VERSION = REPO_ROOT / "VERSION"
 
 
 def supports(value: str | None, api: str = API) -> bool:
@@ -278,12 +279,13 @@ def generate_test(
     return "\n".join(lines)
 
 
-def compile_test(header: str, test: str, compiler: str) -> int | None:
+def compile_test(header: str, test: str, compiler: str, include: Path) -> int | None:
     base_command = (
         shlex.split(compiler)
         + shlex.split(os.environ.get("CPPFLAGS", ""))
         + shlex.split(os.environ.get("CFLAGS", ""))
         + ["-std=c23", "-Wall", "-Wextra", "-Werror", "-pedantic-errors"]
+        + (["-isystem", str(include)] if include.is_dir() else [])
     )
     with tempfile.TemporaryDirectory(prefix="vk-init-") as directory:
         temporary = Path(directory)
@@ -328,6 +330,7 @@ def main() -> int:
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--header", type=Path, default=DEFAULT_HEADER)
     parser.add_argument("--test", type=Path, default=DEFAULT_TEST)
+    parser.add_argument("--version-file", type=Path, default=DEFAULT_VERSION)
     parser.add_argument("--cc", default=os.environ.get("CC", "cc"), help="C compiler command")
     parser.add_argument("--check", action="store_true", help="fail instead of updating stale output")
     args = parser.parse_args()
@@ -338,15 +341,18 @@ def main() -> int:
     count = sum(len(entries) for entries in groups.values())
     header = generate_header(groups, args.registry, version)
     test = generate_test(groups, args.registry, version)
-    if args.check and not all([update(args.header, header, True), update(args.test, test, True)]):
+    outputs = [(args.header, header), (args.test, test), (args.version_file, f"{version}\n")]
+    if args.check and not all([update(path, contents, True) for path, contents in outputs]):
         return 1
-    compiled_count = compile_test(header, test, args.cc)
+    # Vulkan-Headers keeps the matching headers next to the registry.
+    include = args.registry.resolve().parents[1] / "include"
+    compiled_count = compile_test(header, test, args.cc, include)
     if compiled_count is None:
         print("Vulkan struct initializer compile test failed", file=sys.stderr)
         return 1
     if not args.check:
-        update(args.header, header, False)
-        update(args.test, test, False)
+        for path, contents in outputs:
+            update(path, contents, False)
     action = "checked" if args.check else "generated"
     print(f"{action} {count} Vulkan struct initializers (registry header {version})")
     print(f"compile-tested {compiled_count} constructors exposed by the current Vulkan headers")
